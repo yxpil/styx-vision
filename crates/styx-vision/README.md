@@ -206,7 +206,7 @@ cargo test --features http          # 加上远程后端的解析逻辑
 
 | 测试 | 数量 | 说明 |
 |---|---|---|
-| 单元测试 | 96 | 解码、inflate、JPEG、事实提取、归组、宽容解析 |
+| 单元测试 | 97 | 解码、inflate、JPEG、事实提取、归组、宽容解析 |
 | `tests/jpeg_reference.rs` | 3 | 与 libjpeg 逐像素比对（判据：均值 ≤2、离群 ≤2%） |
 | `tests/live_sidecar.rs` | 1 | `#[ignore]`，需要真的 sidecar 在跑 |
 
