@@ -1,0 +1,27 @@
+### 这个文件由 Styx 主仓库的 tools/sync_vision_repo.py 生成。
+### 不要手改——下次同步会覆盖掉。要改请改主仓库的根 Cargo.toml。
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/styx-http",
+    "crates/styx-vision",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/yxpil/styx-vision.git"
+authors = ["yxpil"]
+rust-version = "1.75"
+
+[workspace.dependencies]
+styx-http = { path = "crates/styx-http", version = "0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[profile.release]
+opt-level = 2
+lto = false
