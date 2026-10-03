@@ -206,4 +206,39 @@ mod tests {
         assert!(Url::parse("http://").is_err());
         assert!(Url::parse("http://h:abc/").is_err());
     }
+
+    // ── 注入硬化：base URL 是配置/外部输入 ──
+
+    #[test]
+    fn rejects_non_http_schemes_that_become_file_or_script() {
+        // SSRF / 协议注入：只允许 http(s)。
+        for bad in [
+            "file:///etc/passwd",
+            "file:///C:/Windows/system32/drivers/etc/hosts",
+            "javascript:alert(1)",
+            "data:text/html,<script>alert(1)</script>",
+            "gopher://evil/x",
+            "ftp://internal:21/",
+            "ws://h/ws",
+        ] {
+            assert!(Url::parse(bad).is_err(), "{bad} 必须被拒");
+        }
+    }
+
+    #[test]
+    fn rejects_garbage_ports() {
+        // 端口非数字 / 越界 / 空端口都要当场报错，不推迟到连接失败。
+        assert!(Url::parse("http://h:99999/").is_err(), "端口越界");
+        assert!(Url::parse("http://h:8abc/").is_err(), "端口非数字");
+        assert!(Url::parse("http://h:/").is_err(), "空端口");
+        assert!(Url::parse("http://h:0/").is_ok(), "端口 0 语法合法");
+    }
+
+    #[test]
+    fn userinfo_is_stripped_and_host_is_literal() {
+        // userinfo 里夹带的恶意用户/口令不得进入 Host；host 只是字面串。
+        let u = Url::parse("http://attacker%40evil:pw@victim.example/x").unwrap();
+        assert_eq!(u.host, "victim.example");
+        assert!(!u.host.contains("attacker"), "userinfo 不得泄漏进 host");
+    }
 }

@@ -470,4 +470,49 @@ mod tests {
         assert!(facts.notes.iter().any(|n| n.contains("反推失败")));
         assert!(text.contains("2×2"), "本地事实必须还在：{text}");
     }
+
+    // ── 钩子（后端链）硬化 ──
+
+    struct Flaky {
+        order: &'static str,
+    }
+    impl VisionBackend for Flaky {
+        fn name(&self) -> &str {
+            self.order
+        }
+        fn health(&self) -> bool {
+            true
+        }
+        fn describe(&self, _i: &[u8], _f: &ImageFacts) -> Result<Option<String>> {
+            Ok(Some(format!("caption-from-{}", self.order)))
+        }
+        fn detect(&self, _i: &[u8]) -> Result<Vec<Detection>> {
+            if self.order == "flaky" {
+                Err(crate::VisionError::Transport("boom".into()))
+            } else {
+                Ok(vec![det("cat", 0.9)])
+            }
+        }
+    }
+
+    #[test]
+    fn a_failing_backend_does_not_stop_siblings_in_registration_order() {
+        // 钩子注册顺序 = 触发顺序：flaky 先注册且 detect 报错，
+        // 紧随其后的 healthy 后端仍被调用、结果仍合并；flaky 只留一条 note。
+        let composer = Composer::new()
+            .with(Box::new(Flaky { order: "flaky" }))
+            .with(Box::new(Flaky { order: "healthy" }));
+        assert_eq!(composer.names(), vec!["flaky", "healthy"], "注册顺序即触发顺序");
+
+        let (facts, text, used) = composer.describe(&tiny_png());
+        // healthy 后端的检测与 caption 都进来了
+        assert!(facts.objects.iter().any(|o| o.label == "cat"), "{:?}", facts.objects);
+        assert!(facts.captions.iter().any(|c| c.contains("caption-from-healthy")), "{facts:?}");
+        assert!(facts.captions.iter().any(|c| c.contains("caption-from-flaky")), "{facts:?}");
+        // flaky 的失败被如实记录，而不是 panic / 中断整条链
+        assert!(facts.notes.iter().any(|n| n.contains("flaky") && n.contains("失败")), "{facts:?}");
+        // used 里 healthy 记到了，flaky 的检测没记成功
+        assert!(used.iter().any(|u| u.contains("healthy")), "{used:?}");
+        assert!(text.contains("cat"), "兄弟后端结果必须进最终描述：{text}");
+    }
 }
