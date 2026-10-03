@@ -1,5 +1,12 @@
 # styx-vision 测试说明
 
+- 测试完成：是（2026-10-04）
+- 测试日期：2026-10-04
+- 测试内容：单元覆盖 styx-http（URL 解析）与 styx-vision（PNG/BMP/JPEG 解码、inflate、事实提取、标签归组、Composer 后端合并）；集成覆盖 JPEG 与 libjpeg 逐像素比对、畸形图片字节鲁棒性；注入测试覆盖 URL 协议/端口守卫、伪造巨尺寸/截断/负尺寸图片字节不 panic 安全降级；钩子测试覆盖 Composer 可插拔后端链——注册顺序即触发顺序、一个后端报错不中断兄弟后端。
+- 运行命令：`cargo test -p styx-http` / `cargo test -p styx-vision`（`--features http` 开远程后端解析）
+- 测试框架：Rust #[cfg(test)]
+- 模型：豆包（Doubao）生成
+
 这是一个 cargo workspace，两个 crate：
 
 | crate | 作用 | 测试位置 |
