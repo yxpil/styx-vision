@@ -128,3 +128,15 @@ cargo test --features http     # 加上远程后端的解析逻辑
 ## License
 
 MIT © 2026 yxpil
+
+---
+
+<div align="center">
+
+<a href="https://github.com/yxpil/styx-vision">
+  <img width="100%" src="https://alittlecatgirlpanel.yxp.hk/card?repo=yxpil/styx-vision" alt="gh-card · yxpil/styx-vision" />
+</a>
+
+<sub>Powered by <a href="https://alittlecatgirlpanel.yxp.hk"><b>gh-card</b></a> · 粉色手写体 README 仓库名片</sub>
+
+</div>
