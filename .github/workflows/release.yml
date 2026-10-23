@@ -1,0 +1,135 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: test
+
+      - name: Test (本地路径)
+        run: cargo test --locked --workspace
+
+      - name: Test (含远程后端)
+        run: cargo test --locked --workspace --features styx-vision/http
+
+      - name: Build all targets (含 example)
+        run: cargo build --locked --workspace --all-targets --features styx-vision/http
+
+  build:
+    name: build inspect (${{ matrix.target }})
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+          - os: macos-14
+            target: aarch64-apple-darwin
+            archive: tar.gz
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build inspect
+        run: cargo build --release --locked --target ${{ matrix.target }} -p styx-vision --features styx-vision/http --example inspect
+
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+          BIN="target/${{ matrix.target }}/release/examples/inspect"
+          if [ -f "$BIN.exe" ]; then BIN="$BIN.exe"; fi
+          PKG="styx-vision-inspect-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          mkdir -p "dist/$PKG"
+          cp "$BIN" "dist/$PKG/"
+          cp README.md LICENSE "dist/$PKG/"
+          cp crates/styx-vision/README.md "dist/$PKG/API.md"
+          cd dist
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            7z a -tzip "$PKG.zip" "./$PKG/*" >/dev/null
+          else
+            tar -czf "$PKG.tar.gz" "$PKG"
+          fi
+          rm -rf "$PKG"
+          ls -lh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.target }}
+          path: dist/*
+
+  publish:
+    name: publish
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: cd dist && sha256sum *.zip *.tar.gz > SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.zip
+            dist/*.tar.gz
+            dist/SHA256SUMS.txt
+          generate_release_notes: true
+          body: |
+            ## styx-vision ${{ github.ref_name }}
+
+            纯 Rust、零第三方依赖的本地图像理解库，附带命令行工具 `inspect`：
+
+            ```bash
+            inspect photo.jpg                      # 本地事实，永远可用
+            inspect photo.jpg --base http://127.0.0.1:8420   # 接 sidecar 做检测/反推
+            ```
+
+            本页的 `inspect` 已启用 `http` feature，可直接连接本地 ONNX sidecar 或 OpenAI 兼容视觉端点。
+
+            | 平台 | 文件 |
+            |---|---|
+            | Windows x64 | `styx-vision-inspect-*-x86_64-pc-windows-msvc.zip` |
+            | Linux x64 | `styx-vision-inspect-*-x86_64-unknown-linux-gnu.tar.gz` |
+            | macOS Apple Silicon | `styx-vision-inspect-*-aarch64-apple-darwin.tar.gz` |
+
+            作为库使用时直接依赖仓库（`styx-vision = { git = "https://github.com/yxpil/styx-vision" }`）；
+            源码见 GitHub 自动生成的 Source code 压缩包。
+
+            二进制未签名：macOS 首次运行可能被 Gatekeeper 拦截（`xattr -d com.apple.quarantine inspect`），
+            Windows 可能弹出 SmartScreen 提示。同页附 `SHA256SUMS.txt` 供校验。
