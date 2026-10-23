@@ -14,9 +14,15 @@ fn adversarial_payloads() -> Vec<(&'static str, Vec<u8>)> {
         ("empty", vec![]),
         ("nul", vec![0u8; 64]),
         ("ff", vec![0xffu8; 64]),
-        ("random_text", b"<html><script>alert(1)</script></html>".to_vec()),
+        (
+            "random_text",
+            b"<html><script>alert(1)</script></html>".to_vec(),
+        ),
         ("sql_in_text", b"'); DROP TABLE images;--".to_vec()),
-        ("png_magic_truncated", vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a]),
+        (
+            "png_magic_truncated",
+            vec![0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a],
+        ),
         ("jpeg_magic_truncated", vec![0xFF, 0xD8, 0xFF, 0xE0]),
         ("bmp_magic_truncated", b"BM".to_vec()),
     ]

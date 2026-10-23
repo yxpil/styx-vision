@@ -502,15 +502,41 @@ mod tests {
         let composer = Composer::new()
             .with(Box::new(Flaky { order: "flaky" }))
             .with(Box::new(Flaky { order: "healthy" }));
-        assert_eq!(composer.names(), vec!["flaky", "healthy"], "注册顺序即触发顺序");
+        assert_eq!(
+            composer.names(),
+            vec!["flaky", "healthy"],
+            "注册顺序即触发顺序"
+        );
 
         let (facts, text, used) = composer.describe(&tiny_png());
         // healthy 后端的检测与 caption 都进来了
-        assert!(facts.objects.iter().any(|o| o.label == "cat"), "{:?}", facts.objects);
-        assert!(facts.captions.iter().any(|c| c.contains("caption-from-healthy")), "{facts:?}");
-        assert!(facts.captions.iter().any(|c| c.contains("caption-from-flaky")), "{facts:?}");
+        assert!(
+            facts.objects.iter().any(|o| o.label == "cat"),
+            "{:?}",
+            facts.objects
+        );
+        assert!(
+            facts
+                .captions
+                .iter()
+                .any(|c| c.contains("caption-from-healthy")),
+            "{facts:?}"
+        );
+        assert!(
+            facts
+                .captions
+                .iter()
+                .any(|c| c.contains("caption-from-flaky")),
+            "{facts:?}"
+        );
         // flaky 的失败被如实记录，而不是 panic / 中断整条链
-        assert!(facts.notes.iter().any(|n| n.contains("flaky") && n.contains("失败")), "{facts:?}");
+        assert!(
+            facts
+                .notes
+                .iter()
+                .any(|n| n.contains("flaky") && n.contains("失败")),
+            "{facts:?}"
+        );
         // used 里 healthy 记到了，flaky 的检测没记成功
         assert!(used.iter().any(|u| u.contains("healthy")), "{used:?}");
         assert!(text.contains("cat"), "兄弟后端结果必须进最终描述：{text}");
